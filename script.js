@@ -5,7 +5,7 @@ let gameOver = false;
 
 // BACKGROUND
 const bg = new Image();
-bg.src = "assets/bg.png";
+bg.src = "assets/bg.jpg";
 let bgX = 0;
 
 // PLAYER (SALMA)
@@ -24,23 +24,23 @@ const player = {
 };
 
 const spriteRun = new Image();
-spriteRun.src = "assets/salma_run.png";
+spriteRun.src = "assets/salma_run.jpeg";
 
 const spriteSprint = new Image();
-spriteSprint.src = "assets/salma_sprint.png";
+spriteSprint.src = "assets/salma_sprint.jpeg";
 
 const spriteJump = new Image();
-spriteJump.src = "assets/salma_jump.png";
+spriteJump.src = "assets/salma_jump.jpeg";
 
 const cryOverlay = new Image();
-cryOverlay.src = "assets/salma_cry_overlay.png";
+cryOverlay.src = "assets/salma_nangis.jpeg";
 
 // OBSTACLES
 const obstacleImages = [
-    "assets/obstacle1.png",
-    "assets/obstacle2.png",
-    "assets/obstacle3.png",
-    "assets/obstacle4.png"
+    "assets/obs1.png",
+    "assets/obs2.png",
+    "assets/obs3.jpg",
+    "assets/obs4.jpg"
 ].map(src => {
     let img = new Image();
     img.src = src;
@@ -53,7 +53,7 @@ let obstacleMinGap = 160;
 
 // FARHANT (BURUNG)
 const farhantSprite = new Image();
-farhantSprite.src = "assets/farhant.png";
+farhantSprite.src = "assets/farhant.jpeg";
 
 const farhants = [];
 let farhantTimer = 0;
