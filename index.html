@@ -3,27 +3,23 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Salma Runner — Single File</title>
+<title>Salma Runner — Asset Mode</title>
 <style>
-  /* basic layout */
-  :root{--bg1:#bfeaff;--bg2:#fff2f7;--ground:#e9d7c0;--accent:#ff7c9d}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
-  .wrap{max-width:1200px;margin:10px auto;padding:12px;box-sizing:border-box}
-  #gameBox{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#cfeeff,#fff6f8);box-shadow:0 10px 30px rgba(10,10,10,0.08)}
-  canvas{display:block;width:100%;height:560px;touch-action:none;-webkit-user-select:none;user-select:none}
-  /* HUD */
+  :root{--bg1:#cfeeff;--bg2:#fff6f8;--accent:#ff7c9d}
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:linear-gradient(180deg,var(--bg1),var(--bg2))}
+  .wrap{max-width:1100px;margin:12px auto;padding:12px;box-sizing:border-box}
+  #gameBox{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#e8f8ff,#fff7f9);box-shadow:0 12px 30px rgba(0,0,0,0.08)}
+  canvas{display:block;width:100%;height:560px;touch-action:none;user-select:none;-webkit-user-select:none}
   #hud{position:absolute;left:14px;right:14px;top:14px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
   #score{background:rgba(255,255,255,0.9);padding:8px 12px;border-radius:999px;font-weight:800}
-  #energyWrap{background:rgba(255,255,255,0.9);padding:6px;border-radius:10px;display:flex;align-items:center;width:190px}
+  #energyWrap{background:rgba(255,255,255,0.9);padding:6px;border-radius:10px;display:flex;align-items:center;width:180px}
   #energyBar{height:12px;width:100%;background:linear-gradient(90deg,var(--accent),#ffc0d1);border-radius:8px;transform-origin:left}
-  /* sprint btn */
   #btnSprint{position:absolute;right:18px;bottom:18px;width:86px;height:86px;border-radius:50%;background:linear-gradient(180deg,#ff8aa0,#d85b7a);color:#fff;border:0;font-weight:800;font-size:16px;box-shadow:0 8px 20px rgba(0,0,0,0.22);touch-action:manipulation}
-  /* overlay */
   #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);visibility:hidden}
   #overlay .box{background:white;padding:18px;border-radius:12px;text-align:center;min-width:260px}
   #overlay .box h2{margin:0 0 8px 0}
   #overlay .box button{padding:10px 18px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:800}
-  /* disable selection */
+  /* fix selection and callout on mobile */
   html,body,#gameBox,canvas,#btnSprint{-webkit-touch-callout:none;-webkit-user-select:none;-ms-user-select:none;user-select:none}
   @media (max-width:520px){ canvas{height:420px} #btnSprint{width:72px;height:72px;right:12px;bottom:12px} }
 </style>
@@ -31,7 +27,7 @@
 <body>
 <div class="wrap">
   <div id="gameBox">
-    <canvas id="c" aria-label="game canvas"></canvas>
+    <canvas id="c" aria-label="game"></canvas>
 
     <div id="hud">
       <div id="score">Skor: 0</div>
@@ -52,18 +48,26 @@
 </div>
 
 <script>
-/* Single-file Salma Runner: no external assets required.
-   - Canvas-drawn sprites
-   - Sprint with energy + crying effect
-   - Jump higher + love FX
-   - Obstacles (drawn) with label "Masalah Hidup X"
-   - Farhant (bird) mental with random direction knockback
-   - Score, Game Over, Restart
-   - Long-press on canvas triggers repeated jump (prevents blue selection)
+/* Salma Runner - uses assets from /assets/ folder provided by user.
+   Filenames expected (exact): 
+   bg.jpg, farhant.jpeg, obs1.png, obs2.png, obs3.jpg, obs4.jpg,
+   salma_run.jpeg, salma_sprint.jpeg, salma_jump.jpeg, salma_nangis.jpeg
 */
 
+// ---------- canvas & DPR ----------
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d', { alpha: true });
+let DPR = Math.max(1, window.devicePixelRatio || 1);
+function resize(){
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.floor(rect.width * DPR);
+  canvas.height = Math.floor(rect.height * DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ---------- DOM elems ----------
 const overlay = document.getElementById('overlay');
 const finalScore = document.getElementById('finalScore');
 const btnRestart = document.getElementById('btnRestart');
@@ -71,85 +75,122 @@ const scoreEl = document.getElementById('score');
 const energyBar = document.getElementById('energyBar');
 const btnSprint = document.getElementById('btnSprint');
 
-let DPR = window.devicePixelRatio || 1;
-function resize(){
-  const rect = canvas.getBoundingClientRect();
-  // adjust canvas CSS height already; set internal resolution with DPR
-  canvas.width = Math.floor(canvas.clientWidth * DPR);
-  canvas.height = Math.floor(canvas.clientHeight * DPR);
-  ctx.setTransform(DPR,0,0,DPR,0,0);
+// ---------- asset list & preload ----------
+const ASSETS = {
+  bg: 'assets/bg.jpg',
+  salmaRun: 'assets/salma_run.jpeg',
+  salmaSprint: 'assets/salma_sprint.jpeg',
+  salmaJump: 'assets/salma_jump.jpeg',
+  salmaCry: 'assets/salma_nangis.jpeg',
+  farhant: 'assets/farhant.jpeg',
+  obs1: 'assets/obs1.png',
+  obs2: 'assets/obs2.png',
+  obs3: 'assets/obs3.jpg',
+  obs4: 'assets/obs4.jpg'
+};
+const imgs = {};
+let toLoad = Object.keys(ASSETS).length, loaded = 0, failed = 0;
+function preloadAll(done){
+  for(const k in ASSETS){
+    const i = new Image();
+    // add cache-buster to force fresh load on redeploy
+    i.src = ASSETS[k] + '?v=' + Date.now();
+    i.onload = ()=>{ imgs[k]=i; loaded++; if(loaded+failed===toLoad) done(); };
+    i.onerror = ()=>{ console.warn('asset failed', k, ASSETS[k]); imgs[k]=null; failed++; if(loaded+failed===toLoad) done(); };
+  }
 }
-window.addEventListener('resize', resize);
-resize();
+preloadAll(init);
 
-/* Game state */
-let last = performance.now();
+// ---------- game state ----------
+let last = 0;
 let gameOver = false;
 let score = 0;
 
-/* Player */
+/* player */
 const player = {
-  x: 120,
-  w: 110,
-  h: 110,
+  x: 140,
+  w: 120,
+  h: 120,
   y: 0,
   vy: 0,
-  gravity: 1200, // px/s^2
+  gravity: 1200,
   onGround: true,
-  speed: 8, // base speed pixels/frame scaled by dt later
+  speed: 9,
   energy: 100,
   maxEnergy: 100,
-  sprinting: false
+  sprinting: false,
+  state: 'run' // run, jump, sprint
 };
+function groundY(){ return canvas.clientHeight - 110; }
 
-/* Derived ground Y in CSS pixels */
-function groundY(){
-  return canvas.clientHeight - 110;
-}
-player.y = groundY() - player.h;
+/* obstacles */
+let obstacles = [];
+let obstacleTimer = 0;
+const obstacleMin = 900, obstacleMax = 1700;
 
-/* Controls */
+/* farhant */
+let farhants = [];
+let farhantTimer = 0;
+const farhantGap = 2200;
+
+/* particles */
+let loveParticles = [];
+
+/* input */
 let sprintHeld = false;
 let jumpHold = false;
-let jumpRepeatTimer = 0;
+let jumpRepeat = 0;
 const JUMP_REPEAT_MS = 220;
 
-/* Prevent default selection on long press */
-document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
+// prevent selection during touchmove
+document.addEventListener('touchmove', e=> e.preventDefault(), {passive:false});
 
-/* Input handlers: canvas tap => jump (single); long hold => repeated jumps */
-canvas.addEventListener('touchstart', e => { e.preventDefault(); jumpHold = true; doJump(); });
-canvas.addEventListener('touchend', e => { e.preventDefault(); jumpHold = false; });
-canvas.addEventListener('mousedown', e => { e.preventDefault(); jumpHold = true; doJump(); });
-document.addEventListener('mouseup', e => { jumpHold = false; });
+// ---------- input handlers ----------
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); jumpHold = true; attemptJump(); });
+canvas.addEventListener('touchend', e=>{ e.preventDefault(); jumpHold = false; });
+canvas.addEventListener('mousedown', e=>{ e.preventDefault(); jumpHold = true; attemptJump(); });
+document.addEventListener('mouseup', e=>{ jumpHold = false; });
 
-function doJump(){
+function attemptJump(){
   if(gameOver) return;
   if(player.onGround){
-    player.vy = -650; // initial high impulse (px/s)
+    player.vy = -700; // stronger impulse for higher jump on mobile
     player.onGround = false;
+    player.state = 'jump';
     spawnLoves();
   }
 }
 
-/* Sprint button touch handlers */
+function handleJumpHold(dt){
+  if(jumpHold){
+    jumpRepeat += dt * 1000;
+    if(jumpRepeat >= JUMP_REPEAT_MS){
+      attemptJump();
+      jumpRepeat = 0;
+    }
+  } else {
+    jumpRepeat = 0;
+  }
+}
+
+/* sprint button events */
 btnSprint.addEventListener('touchstart', e=>{ e.preventDefault(); sprintHeld = true; });
 btnSprint.addEventListener('touchend', e=>{ e.preventDefault(); sprintHeld = false; });
 btnSprint.addEventListener('mousedown', e=>{ e.preventDefault(); sprintHeld = true; });
 document.addEventListener('mouseup', e=>{ sprintHeld = false; });
 
-/* Restart */
+// restart
 btnRestart.addEventListener('click', ()=> location.reload());
 
-/* Particles / effects */
-let loveParticles = [];
+// ---------- effects ----------
 function spawnLoves(){
   for(let i=0;i<6;i++){
     loveParticles.push({
       x: player.x + player.w*0.5 + (Math.random()*80-40),
       y: player.y + 10,
-      vy: - (300 + Math.random()*200),
-      t: 0, life: 0.9 + Math.random()*0.9
+      vy: - (300 + Math.random()*220),
+      t: 0,
+      life: 0.9 + Math.random()*0.9
     });
   }
 }
@@ -163,48 +204,43 @@ function updateLoves(dt){
   }
 }
 
-/* Obstacles */
-let obstacles = [];
-let obstacleTimer = 0;
-const minGap = 900, maxGap = 1700; // ms
-
+// ---------- spawn obstacle & farhant ----------
 function spawnObstacle(){
-  const id = Math.floor(Math.random()*9999);
-  const w = 86, h = 86;
+  const picks = ['obs1','obs2','obs3','obs4'];
+  const pick = picks[Math.floor(Math.random()*picks.length)];
+  const w = 92, h = 92;
   obstacles.push({
-    x: (canvas.clientWidth) + 40,
+    x: canvas.clientWidth + 40,
     y: groundY() - h,
-    w, h, id, type: Math.floor(Math.random()*4)
+    w,h,
+    key: pick,
+    id: Math.floor(Math.random()*9999)
   });
 }
-
-/* Farhants */
-let farhants = [];
-let farhantTimer = 0;
-const farhantGapBase = 2000;
 
 function spawnFarhant(){
   farhants.push({
-    x: (canvas.clientWidth) + 80,
+    x: canvas.clientWidth + 80,
     y: groundY() - 140 - Math.random()*40,
-    w: 72, h: 72,
+    w: 72, h:72,
     vx: 120 + Math.random()*80,
-    knock: 0, hit: false
+    knock: 0,
+    hit: false
   });
 }
 
-/* collision */
+// ---------- collision ----------
 function rectCollide(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
-/* UI update */
+// ---------- UI update ----------
 function updateUI(){
   scoreEl.textContent = 'Skor: ' + Math.floor(score);
   const pct = Math.max(0, Math.min(100, (player.energy / player.maxEnergy) * 100));
   energyBar.style.width = pct + '%';
 }
 
-/* draw helpers */
-function drawRoundedRect(x,y,w,h,r,fill,stroke){
+// ---------- draw helpers ----------
+function roundRect(x,y,w,h,r,fill){
   ctx.beginPath();
   ctx.moveTo(x+r,y);
   ctx.arcTo(x+w,y,x+w,y+h,r);
@@ -212,109 +248,79 @@ function drawRoundedRect(x,y,w,h,r,fill,stroke){
   ctx.arcTo(x,y+h,x,y,r);
   ctx.arcTo(x,y,x+w,y,r);
   if(fill){ ctx.fillStyle = fill; ctx.fill(); }
-  if(stroke){ ctx.strokeStyle = stroke; ctx.stroke(); }
 }
 
-/* draw player (cartoon style) */
-function drawPlayer(){
-  // body
-  drawRoundedRect(player.x, player.y, player.w, player.h, 14, '#ffdde6');
-  // head (circle)
+function drawPlayerImageFallback(){
+  // fallback: draw simple chibi using shapes
+  roundRect(player.x, player.y, player.w, player.h, 16, '#ffdeea');
+  // head
   ctx.beginPath();
   ctx.arc(player.x + player.w*0.5, player.y - 12, 28, 0, Math.PI*2);
   ctx.fillStyle = player.sprinting ? '#ffb3c6' : '#ffd6e6';
   ctx.fill();
-
   // eyes
   ctx.fillStyle = '#222';
-  ctx.beginPath(); ctx.arc(player.x + player.w*0.42, player.y - 16, 4, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(player.x + player.w*0.58, player.y - 16, 4, 0, Math.PI*2); ctx.fill();
-
+  ctx.beginPath(); ctx.arc(player.x + player.w*0.41, player.y - 16, 4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(player.x + player.w*0.59, player.y - 16, 4,0,Math.PI*2); ctx.fill();
   // mouth
   ctx.fillStyle = '#6b3b3b';
-  ctx.fillRect(player.x + player.w*0.46, player.y - 6, player.sprinting ? 8 : 12, 4);
-
-  // crying effect (lines) when sprinting
-  if(player.sprinting){
-    ctx.strokeStyle = 'rgba(120,200,255,0.95)';
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(player.x + player.w*0.42, player.y - 8); ctx.lineTo(player.x + player.w*0.42, player.y + 24); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(player.x + player.w*0.58, player.y - 8); ctx.lineTo(player.x + player.w*0.58, player.y + 24); ctx.stroke();
-  }
+  ctx.fillRect(player.x + player.w*0.47, player.y - 6, player.sprinting ? 8 : 12, 4);
 }
 
-/* draw obstacle (cute icon style) */
-function drawObstacle(o){
-  const colors = ['#ffd86b','#ffd2ff','#c9f0a6','#ffd0d0'];
-  drawRoundedRect(o.x, o.y, o.w, o.h, 12, '#fff');
-  // inner bubble
-  drawRoundedRect(o.x+6, o.y+6, o.w-12, o.h-22, 8, colors[o.type]);
-  // label
-  ctx.fillStyle = '#2b2b2b';
-  ctx.font = '14px system-ui';
-  ctx.fillText('Masalah Hidup ' + o.id, o.x + 8, o.y + o.h - 8);
+// ---------- main loop & drawing ----------
+function init(){
+  // set player initial pos
+  player.y = groundY() - player.h;
+  player.onGround = true;
+  last = performance.now();
+  requestAnimationFrame(loop);
 }
 
-/* draw farhant (bird) */
-function drawFarhant(f){
-  // body oval
-  ctx.fillStyle = '#9ed8ff';
-  ctx.beginPath();
-  ctx.ellipse(f.x + f.w*0.5, f.y + f.h*0.5, f.w*0.45, f.h*0.4, 0, 0, Math.PI*2);
-  ctx.fill();
-  // eye
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(f.x + f.w*0.62, f.y + f.h*0.4, 4, 0, Math.PI*2);
-  ctx.fill();
+function showGameOver(){
+  overlay.style.visibility = 'visible';
+  finalScore.textContent = 'Skor kamu: ' + Math.floor(score);
 }
 
-/* main loop */
 function loop(ts){
-  if(!last) last = ts;
-  const dt = Math.min(0.05, (ts - last)/1000);
+  const dt = Math.min(0.05, (ts - last) / 1000);
   last = ts;
 
-  // handle jump hold timing
-  if(jumpHold){
-    jumpRepeatTimer += dt*1000;
-    if(jumpRepeatTimer >= JUMP_REPEAT_MS){
-      doJump();
-      jumpRepeatTimer = 0;
-    }
-  } else jumpRepeatTimer = 0;
+  // handle jump hold
+  handleJumpHold(dt);
 
   // physics
   player.vy += player.gravity * dt;
   player.y += player.vy * dt;
-
   if(player.y > groundY() - player.h){
     player.y = groundY() - player.h;
     player.vy = 0;
     player.onGround = true;
+    if(player.state === 'jump') player.state = 'run';
   }
 
-  // sprint logic
+  // sprint & energy
   if(sprintHeld && player.energy > 0){
     player.sprinting = true;
     player.speed = 14;
     player.energy = Math.max(0, player.energy - 80 * dt); // drain fast
+    player.state = 'sprint';
   } else {
     player.sprinting = false;
-    player.speed = 8;
+    player.speed = 9;
     player.energy = Math.min(player.maxEnergy, player.energy + 22 * dt); // regen slow
+    if(player.state !== 'jump') player.state = 'run';
   }
 
-  // spawn obstacles with spacing
-  obstacleTimer += dt*1000;
-  if(obstacleTimer > (minGap + Math.random()*(maxGap-minGap))){
+  // spawn obstacles
+  obstacleTimer += dt * 1000;
+  if(obstacleTimer > (obstacleMin + Math.random()*(obstacleMax-obstacleMin))){
     spawnObstacle();
     obstacleTimer = 0;
   }
 
   // spawn farhant
-  farhantTimer += dt*1000;
-  if(farhantTimer > (farhantGapBase + Math.random()*1400)){
+  farhantTimer += dt * 1000;
+  if(farhantTimer > (farhantGap + Math.random()*1200)){
     spawnFarhant();
     farhantTimer = 0;
   }
@@ -323,7 +329,7 @@ function loop(ts){
   for(let i=obstacles.length-1;i>=0;i--){
     const o = obstacles[i];
     o.x -= player.speed * dt * 60;
-    if(o.x + o.w < -100) obstacles.splice(i,1);
+    if(o.x + o.w < -120) obstacles.splice(i,1);
   }
 
   // move farhants
@@ -339,27 +345,29 @@ function loop(ts){
     if(f.x + f.w < -120) farhants.splice(i,1);
   }
 
-  // collisions
+  // collisions: obstacles => game over
   for(const o of obstacles){
     if(rectCollide(player, {x:o.x,y:o.y,w:o.w,h:o.h})){
       gameOver = true;
       showGameOver();
     }
   }
+  // farhant collisions => knockback random + add score
   for(const f of farhants){
     if(rectCollide(player, {x:f.x,y:f.y,w:f.w,h:f.h}) && !f.hit){
       f.hit = true;
-      // random knock magnitude and direction
-      f.knock = (Math.random()<0.5 ? -1 : 1) * (200 + Math.random()*300);
+      f.knock = (Math.random() < 0.5 ? -1 : 1) * (200 + Math.random()*300);
       score += 25;
     }
   }
 
-  // score increases with elapsed and speed
+  // score increases with speed/time
   score += (player.speed/60) * dt * 100;
+
+  // update love particles
   updateLoves(dt);
 
-  // draw
+  // draw frame
   drawFrame();
 
   // update UI
@@ -368,55 +376,106 @@ function loop(ts){
   if(!gameOver) requestAnimationFrame(loop);
 }
 
-/* draw everything */
+// draw everything
 function drawFrame(){
   // clear
   ctx.clearRect(0,0,canvas.width,canvas.height);
   const W = canvas.width / DPR, H = canvas.height / DPR;
 
-  // background sky (gradient simulated by CSS but ensure fill for exported)
-  ctx.fillStyle = '#cfeeff';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // draw bg if loaded, else gradient fill
+  if(imgs.bg){
+    // draw image stretched to canvas internal resolution
+    ctx.drawImage(imgs.bg, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#cfeeff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
 
-  // ground strip
+  // ground
   ctx.fillStyle = '#e9d7c0';
   ctx.fillRect(0, groundY(), W, H - groundY());
 
-  // draw obstacles
-  for(const o of obstacles) drawObstacle(o);
+  // draw obstacles (image if available)
+  for(const o of obstacles){
+    if(imgs[o.key]){
+      ctx.drawImage(imgs[o.key], o.x, o.y, o.w, o.h);
+    } else {
+      drawRoundedRect(o.x, o.y, o.w, o.h, 12, '#fff');
+      ctx.fillStyle = '#ffd86b';
+      ctx.fillRect(o.x+8,o.y+8,o.w-16,o.h-30);
+    }
+    // label
+    ctx.fillStyle = '#2b2b2b';
+    ctx.font = `${12 * (DPR>1?1.2:1)}px sans-serif`;
+    ctx.fillText('Masalah Hidup ' + o.id, o.x + 8, o.y + o.h - 8);
+  }
 
-  // draw farhants
-  for(const f of farhants) drawFarhant(f);
+  // draw farhants (image fallback)
+  for(const f of farhants){
+    if(imgs.farhant){
+      ctx.drawImage(imgs.farhant, f.x, f.y, f.w, f.h);
+    } else {
+      drawFarhantShape(f);
+    }
+  }
 
-  // draw player
-  drawPlayer();
+  // draw player: prefer user images if loaded
+  if(player.state === 'sprint' && imgs.salmaSprint){
+    ctx.drawImage(imgs.salmaSprint, player.x, player.y, player.w, player.h);
+    // cry overlay if available
+    if(imgs.salmaCry){
+      ctx.drawImage(imgs.salmaCry, player.x - 8, player.y - 8, player.w + 16, player.h + 16);
+    } else {
+      // fallback tears
+      ctx.strokeStyle = 'rgba(120,200,255,0.95)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(player.x + player.w*0.4, player.y + player.h*0.3); ctx.lineTo(player.x + player.w*0.4, player.y + player.h*0.7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(player.x + player.w*0.6, player.y + player.h*0.3); ctx.lineTo(player.x + player.w*0.6, player.y + player.h*0.7); ctx.stroke();
+    }
+  } else if(player.state === 'jump' && imgs.salmaJump){
+    ctx.drawImage(imgs.salmaJump, player.x, player.y, player.w, player.h);
+  } else if(imgs.salmaRun){
+    ctx.drawImage(imgs.salmaRun, player.x, player.y, player.w, player.h);
+  } else {
+    drawPlayerImageFallback();
+  }
 
-  // draw loves on top
+  // draw love particles on top
+  ctx.save();
   for(const p of loveParticles){
     const alpha = Math.max(0, 1 - (p.t / p.life));
-    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = '#ff7ca0';
     const px = p.x * DPR, py = p.y * DPR;
     ctx.beginPath();
-    ctx.arc(px-6, py, 6*DPR, 0, Math.PI*2);
-    ctx.arc(px+6, py, 6*DPR, 0, Math.PI*2);
-    ctx.fill(); ctx.restore();
+    ctx.arc(px - 6*DPR, py, 6*DPR, 0, Math.PI*2);
+    ctx.arc(px + 6*DPR, py, 6*DPR, 0, Math.PI*2);
+    ctx.fill();
   }
-
-  // top-left score handled by DOM overlay
+  ctx.restore();
 }
 
-/* show game over overlay */
-function showGameOver(){
-  overlay.style.visibility = 'visible';
-  document.getElementById('finalScore').textContent = 'Skor kamu: ' + Math.floor(score);
+// fallback farhant drawing
+function drawFarhantShape(f){
+  ctx.fillStyle = '#9ed8ff';
+  ctx.beginPath();
+  ctx.ellipse(f.x + f.w/2, f.y + f.h/2, f.w*0.45, f.h*0.4, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(f.x + f.w*0.62, f.y + f.h*0.4, 4, 0, Math.PI*2);
+  ctx.fill();
 }
 
-/* start */
-let last = 0;
-function init(){ resize(); player.y = groundY() - player.h; last = performance.now(); requestAnimationFrame(loop); }
-init();
-
+// ---------- init after preload ----------
+function init(){
+  resize();
+  // set player start Y correctly (CSS pixels)
+  player.y = groundY() - player.h;
+  player.onGround = true;
+  last = performance.now();
+  requestAnimationFrame(loop);
+}
 </script>
 </body>
 </html>
