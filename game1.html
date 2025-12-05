@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Salma Runner</title>
+<style>
+  body{margin:0;background:#e7e2d9;font-family:sans-serif;overflow:hidden;}
+  canvas{display:block;width:100vw;height:100vh;}
+  #runBtn{
+    position:fixed;bottom:30px;right:30px;
+    width:70px;height:70px;border-radius:50%;
+    background:#8b5e3c;color:white;font-size:14px;
+    border:none;outline:none;
+    box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+<button id="runBtn">LARI</button>
+
+<script>
+// ---------------------------
+// CONFIG FOTO (ganti URL-nya)
+// ---------------------------
+
+// foto Salma karakter utama
+const salmaImgURL = "https://i.ibb.co/6H8SpcV/sample-girl.png"; 
+// foto Farhant
+const farhantImgURL = "https://i.ibb.co/QJ7B6Pr/sample-boy.png";
+
+// ---------------------------
+// SETUP
+// ---------------------------
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+resize();
+window.onresize = resize;
+
+let gravity = 0.8;
+let gameSpeed = 8;
+
+let stamina = 100;
+const maxStamina = 100;
+const staminaUse = 0.8;
+const staminaRegen = 0.5;
+
+// ---------------------------
+// LOAD IMAGE
+// ---------------------------
+const salmaImg = new Image();
+salmaImg.src = salmaImgURL;
+
+const farhantImg = new Image();
+farhantImg.src = farhantImgURL;
+
+// ---------------------------
+// SALMA
+// ---------------------------
+let salma = {
+  x: 80,
+  y: 0,
+  w: 80,
+  h: 80,
+  dy: 0,
+  onGround: false
+};
+
+// ---------------------------
+// OBSTACLE (Masalah Hidup)
+// ---------------------------
+let obstacles = [];
+function spawnObstacle(){
+  obstacles.push({
+    x: canvas.width + 40,
+    y: canvas.height - 100,
+    w: 60,
+    h: 60,
+    label: "Masalah Hidup"
+  });
+}
+setInterval(spawnObstacle, 1600);
+
+// ---------------------------
+// FARHANT (Rival)
+// ---------------------------
+let rivals = [];
+function spawnFarhant(){
+  rivals.push({
+    x: canvas.width + 40,
+    y: canvas.height - 150,
+    w: 70,
+    h: 70,
+    vy: -15,
+    hit:false
+  });
+}
+setInterval(spawnFarhant, 4000 + Math.random()*2000);
+
+// ---------------------------
+// LOVE PARTICLES
+// ---------------------------
+let loves = [];
+function emitLove(x,y){
+  for(let i=0;i<6;i++){
+    loves.push({
+      x,y,
+      dx:(Math.random()*4-2),
+      dy:(Math.random()*-3-1),
+      a:1
+    });
+  }
+}
+
+// ---------------------------
+// INPUT: TAP = JUMP
+// ---------------------------
+window.addEventListener("touchstart", jump);
+window.addEventListener("mousedown", jump);
+
+function jump(){
+  if(salma.onGround){
+    salma.dy = -17;
+    salma.onGround = false;
+    emitLove(salma.x+salma.w/2, salma.y);
+  }
+}
+
+// ---------------------------
+// RUN BUTTON
+// ---------------------------
+let running = false;
+const btn = document.getElementById("runBtn");
+btn.ontouchstart = ()=> running = true;
+btn.ontouchend   = ()=> running = false;
+btn.onmousedown  = ()=> running = true;
+btn.onmouseup    = ()=> running = false;
+
+// ---------------------------
+// LOOP
+// ---------------------------
+function loop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // ground
+  ctx.fillStyle = "#cbb59b";
+  ctx.fillRect(0, canvas.height-40, canvas.width, 40);
+
+  // stamina
+  if(running && stamina>0){
+    gameSpeed = 13;
+    stamina -= staminaUse;
+    if(stamina<0) stamina = 0;
+  } else {
+    gameSpeed = 8;
+    stamina += staminaRegen;
+    if(stamina>maxStamina) stamina=maxStamina;
+  }
+
+  // ---------------------------
+  // SALMA GRAVITY
+  // ---------------------------
+  salma.dy += gravity;
+  salma.y += salma.dy;
+
+  if(salma.y + salma.h >= canvas.height-40){
+    salma.y = canvas.height-40 - salma.h;
+    salma.dy = 0;
+    salma.onGround = true;
+  }
+
+  // draw salma
+  ctx.drawImage(salmaImg, salma.x, salma.y, salma.w, salma.h);
+
+  // ---------------------------
+  // OBSTACLES
+  // ---------------------------
+  for(let o of obstacles){
+    o.x -= gameSpeed;
+
+    ctx.fillStyle = "#8b5e3c";
+    ctx.fillRect(o.x, o.y, o.w, o.h);
+
+    ctx.fillStyle="white";
+    ctx.font="12px sans-serif";
+    ctx.fillText(o.label, o.x+5, o.y+30);
+  }
+  obstacles = obstacles.filter(o=> o.x>-100);
+
+  // ---------------------------
+  // FARHANT
+  // ---------------------------
+  for(let fv of rivals){
+    if(!fv.hit){
+      fv.x -= gameSpeed;
+      fv.vy += 1;
+      fv.y += fv.vy;
+    }
+    // bouncing landing
+    if(fv.y + fv.h >= canvas.height-40){
+      fv.y = canvas.height-40 - fv.h;
+      fv.vy = -fv.vy*0.5;
+      fv.hit = true;
+    }
+    ctx.drawImage(farhantImg, fv.x, fv.y, fv.w, fv.h);
+  }
+  rivals = rivals.filter(r=> r.x>-150);
+
+  // ---------------------------
+  // LOVE PARTICLES
+  // ---------------------------
+  for(let l of loves){
+    l.x += l.dx;
+    l.y += l.dy;
+    l.a -= 0.03;
+
+    ctx.fillStyle = `rgba(255,80,140,${l.a})`;
+    ctx.beginPath();
+    ctx.arc(l.x,l.y,6,0,Math.PI*2);
+    ctx.fill();
+  }
+  loves = loves.filter(l=> l.a>0);
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
