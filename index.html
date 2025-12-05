@@ -1,22 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <title>Salma Runner</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Salma Runner (Asset-ready)</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="gameWrap">
+    <canvas id="c"></canvas>
 
-<div id="gameContainer">
-    <canvas id="gameCanvas" width="900" height="300"></canvas>
-
-    <div id="sprintBtn">LARI</div>
-
-    <div id="restartScreen">
-        <div id="restartText">RESTART</div>
+    <!-- HUD kecil, tidak menghalangi -->
+    <div id="hud">
+      <div id="score">Skor: 0</div>
+      <div id="energyWrap">
+        <div id="energyBar"></div>
+      </div>
     </div>
-</div>
 
-<script src="script.js"></script>
+    <!-- tombol sprint -->
+    <button id="btnSprint" aria-label="Sprint">LARI</button>
+
+    <!-- overlay restart -->
+    <div id="overlay" class="hidden">
+      <div id="overlayBox">
+        <div id="gameOverTitle">Game Over</div>
+        <div id="finalScore"></div>
+        <button id="btnRestart">RESTART</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
