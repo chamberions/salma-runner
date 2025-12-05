@@ -1,0 +1,43 @@
+body {
+    background: #f7f7f7;
+    display: flex;
+    justify-content: center;
+    padding-top: 20px;
+    font-family: 'Fredoka One', sans-serif;
+}
+
+#gameContainer {
+    position: relative;
+}
+
+#sprintBtn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: #ff7c9d;
+    color: white;
+    padding: 20px 22px;
+    border-radius: 50%;
+    user-select: none;
+    text-align: center;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+#restartScreen {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
+}
+
+#restartText {
+    background: white;
+    padding: 20px 40px;
+    font-size: 24px;
+    border-radius: 15px;
+    cursor: pointer;
+}
