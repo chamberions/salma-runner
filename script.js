@@ -1,3 +1,8 @@
+console.log("BG loaded?", bg.src);
+bg.onload = () => console.log("BG success");
+bg.onerror = () => console.log("BG NOT FOUND");
+
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
