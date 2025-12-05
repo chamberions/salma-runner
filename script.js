@@ -2,82 +2,166 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 let gameOver = false;
-
-// BACKGROUND
-const bg = new Image();
-bg.src = "assets/bg.jpg";
-let bgX = 0;
-
-// DUMMY ANIMASI
-const girlRun = new Image();
-girlRun.src = "assets/girl_run.png";
-
-const girlSprint = new Image();
-girlSprint.src = "assets/girl_sprint.png";
-
-const girlJump = new Image();
-girlJump.src = "assets/girl_jump.png";
-
-const cryFX = new Image();
-cryFX.src = "assets/effect_cry.png";
-
-const loveFX = new Image();
-loveFX.src = "assets/love.png";
-
-const bird = new Image();
-bird.src = "assets/farhant.png";
+let score = 0;
 
 // PLAYER
 const player = {
     x: 80,
-    y: 180,
-    width: 70,
-    height: 70,
+    y: 190,
+    width: 60,
+    height: 60,
     vy: 0,
     gravity: 0.8,
     onGround: true,
-    sprite: girlRun,
+    sprint: false,
     energy: 100,
     maxEnergy: 100,
     speed: 6,
     baseSpeed: 6
 };
 
-// SCORE
-let score = 0;
-
-// INPUT
-let sprintHeld = false;
-
 // OBSTACLES
-const obstacleImages = [
-    "assets/obs1.png",
-    "assets/obs2.png",
-    "assets/obs3.png"
-].map(src => {
-    let img = new Image();
-    img.src = src;
-    return img;
-});
-
 let obstacles = [];
 let obstacleTimer = 0;
-let obstacleMinGap = 200;
+let obstacleGap = 200;
 
 // FARHANT
 let farhants = [];
 let farhantTimer = 0;
 
+// LOVE EFFECT
+let loveFX = [];
+
+// SPRINT BUTTON INPUT
+let sprintHeld = false;
+
+document.getElementById("sprintBtn").addEventListener("touchstart", () => sprintHeld = true);
+document.getElementById("sprintBtn").addEventListener("touchend", () => sprintHeld = false);
+document.getElementById("sprintBtn").addEventListener("mousedown", () => sprintHeld = true);
+document.getElementById("sprintBtn").addEventListener("mouseup", () => sprintHeld = false);
+
+// TAP TO JUMP
+canvas.addEventListener("touchstart", jump);
+canvas.addEventListener("mousedown", jump);
+
+document.getElementById("restartText").onclick = () => location.reload();
+
+// ===========================================================
+// DRAW PLAYER (CARTOON)
+// ===========================================================
+function drawPlayer() {
+    ctx.save();
+
+    // Body
+    ctx.fillStyle = "#ffccdd";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // Head
+    ctx.beginPath();
+    ctx.arc(player.x + 30, player.y - 10, 18, 0, Math.PI * 2);
+    ctx.fillStyle = player.sprint ? "#ff88aa" : "#ffb3c6";
+    ctx.fill();
+
+    // Eyes (crying mode)
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(player.x + 22, player.y - 14, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(player.x + 38, player.y - 14, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (player.sprint) {
+        ctx.strokeStyle = "cyan";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(player.x + 22, player.y - 10);
+        ctx.lineTo(player.x + 18, player.y + 20);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(player.x + 38, player.y - 10);
+        ctx.lineTo(player.x + 42, player.y + 20);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+// ===========================================================
+// LOVE EFFECT
+// ===========================================================
+function spawnLove() {
+    loveFX.push({
+        x: player.x + 30,
+        y: player.y - 20,
+        vy: -2,
+        alpha: 1
+    });
+}
+
+function drawLove() {
+    for (let i = loveFX.length - 1; i >= 0; i--) {
+        let fx = loveFX[i];
+
+        ctx.save();
+        ctx.globalAlpha = fx.alpha;
+        ctx.fillStyle = "pink";
+
+        ctx.beginPath();
+        ctx.moveTo(fx.x, fx.y);
+        ctx.arc(fx.x - 5, fx.y, 6, 0, Math.PI * 2);
+        ctx.arc(fx.x + 5, fx.y, 6, 0, Math.PI * 2);
+        ctx.lineTo(fx.x, fx.y + 10);
+        ctx.fill();
+
+        ctx.restore();
+
+        fx.y += fx.vy;
+        fx.alpha -= 0.03;
+
+        if (fx.alpha <= 0) loveFX.splice(i, 1);
+    }
+}
+
+// ===========================================================
+// DRAW OBSTACLE (CARTOON)
+// ===========================================================
+function drawObstacle(o) {
+    ctx.fillStyle = "#ffe08a";
+    ctx.fillRect(o.x, o.y, o.width, o.height);
+
+    ctx.fillStyle = "#444";
+    ctx.font = "14px sans-serif";
+    ctx.fillText(o.label, o.x + 4, o.y + 35);
+}
+
+// ===========================================================
+// DRAW FARHANT (CARTOON BIRD)
+// ===========================================================
+function drawFarhant(f) {
+    ctx.fillStyle = "#aaddff";
+    ctx.beginPath();
+    ctx.ellipse(f.x + 25, f.y + 20, 25, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(f.x + 35, f.y + 15, 4, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// ===========================================================
 // SPAWN OBSTACLE
+// ===========================================================
 function spawnObstacle() {
-    const img = obstacleImages[Math.floor(Math.random()*obstacleImages.length)];
     obstacles.push({
-        x: canvas.width + 50,
-        y: 190,
+        x: canvas.width + 20,
+        y: 200,
         width: 60,
         height: 60,
-        img: img,
-        label: "Masalah Hidup"
+        label: "Masalah " + (Math.floor(Math.random() * 8) + 1)
     });
 }
 
@@ -85,157 +169,125 @@ function spawnObstacle() {
 function spawnFarhant() {
     farhants.push({
         x: canvas.width + 60,
-        y: 130,
-        width: 55,
-        height: 55,
-        dx: 4,
-        knock: 0,
+        y: 140,
+        width: 50,
+        height: 40,
+        speed: 4,
+        knockback: 0,
         hit: false
     });
 }
 
-// UPDATE PLAYER
-function updatePlayer() {
-
-    // Apply jump physics
-    player.vy += player.gravity;
-    player.y += player.vy;
-
-    if (player.y >= 180) {
-        player.y = 180;
-        player.onGround = true;
-        player.vy = 0;
-    }
-
-    // SPRINT
-    if (sprintHeld && player.energy > 0) {
-        player.speed = 10;
-        player.energy -= 0.8;
-        player.sprite = girlSprint;
-    } else {
-        player.speed = 6;
-        player.sprite = girlRun;
-        player.energy += 0.5;
-    }
-
-    if (player.energy < 0) player.energy = 0;
-    if (player.energy > player.maxEnergy) player.energy = player.maxEnergy;
-
+// ===========================================================
+// COLLISION
+// ===========================================================
+function checkCollision(a, b) {
+    return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+    );
 }
 
-// DRAW PLAYER
-function drawPlayer() {
-    ctx.drawImage(player.sprite, player.x, player.y, player.width, player.height);
-
-    if (player.sprite === girlSprint) {
-        ctx.drawImage(cryFX, player.x - 10, player.y - 10, 40, 40);
+// ===========================================================
+// JUMP
+// ===========================================================
+function jump() {
+    if (player.onGround && !gameOver) {
+        player.vy = -15;
+        player.onGround = false;
+        spawnLove();
     }
 }
 
-// LOVE FX
-let loveFrames = [];
-function drawLove() {
-    for (let f of loveFrames) {
-        ctx.drawImage(loveFX, f.x, f.y, 30, 30);
-        f.y -= 2;
-        f.life--;
-    }
-    loveFrames = loveFrames.filter(f => f.life > 0);
-}
-
-// FARHANT UPDATE
-function updateFarhants() {
-    for (let f of farhants) {
-        if (!f.hit) {
-            f.x -= f.dx;
-        } else {
-            f.x += f.knock;
-            f.knock *= 0.92;
-            if (f.knock < 0.3) f.hit = false;
-        }
-    }
-}
-
-// FARHANT COLLISION
-function checkFarhantCollision() {
-    for (let f of farhants) {
-        if (
-            player.x < f.x + f.width &&
-            player.x + player.width > f.x &&
-            player.y < f.y + f.height &&
-            player.y + player.height > f.y
-        ) {
-            f.hit = true;
-            f.knock = 12;
-        }
-    }
-}
-
-// DRAW FARHANT
-function drawFarhants() {
-    for (let f of farhants) {
-        ctx.drawImage(bird, f.x, f.y, f.width, f.height);
-    }
-}
-
-// COLLISION OBSTACLE
-function checkCollision() {
-    for (let o of obstacles) {
-        if (
-            player.x < o.x + o.width &&
-            player.x + player.width > o.x &&
-            player.y < o.y + o.height &&
-            player.y + player.height > o.y
-        ) {
-            gameOver = true;
-            document.getElementById("restartScreen").style.display = "flex";
-        }
-    }
-}
-
+// ===========================================================
 // GAME LOOP
-function gameLoop() {
+// ===========================================================
+function update() {
     if (gameOver) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // BG
-    bgX -= player.speed * 0.4;
-    if (bgX <= -canvas.width) bgX = 0;
-    ctx.drawImage(bg, bgX, 0, canvas.width, canvas.height);
-    ctx.drawImage(bg, bgX + canvas.width, 0, canvas.width, canvas.height);
+    // BACKGROUND
+    ctx.fillStyle = "#333";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    updatePlayer();
-    drawPlayer();
-    drawLove();
+    // PLAYER PHYSICS
+    player.vy += player.gravity;
+    player.y += player.vy;
+
+    if (player.y >= 190) {
+        player.y = 190;
+        player.vy = 0;
+        player.onGround = true;
+    }
+
+    // SPRINT MODE
+    if (sprintHeld && player.energy > 0) {
+        player.sprint = true;
+        player.speed = 9;
+        player.energy -= 0.4;
+    } else {
+        player.sprint = false;
+        player.speed = 6;
+        player.energy = Math.min(player.energy + 0.2, player.maxEnergy);
+    }
 
     // OBSTACLES
     obstacleTimer++;
-    if (obstacleTimer > obstacleMinGap + Math.random() * 200) {
+    if (obstacleTimer > obstacleGap) {
         spawnObstacle();
         obstacleTimer = 0;
+        obstacleGap = 150 + Math.random() * 140;
     }
 
-    for (let o of obstacles) {
+    obstacles.forEach(o => {
         o.x -= player.speed;
-        ctx.drawImage(o.img, o.x, o.y, o.width, o.height);
-    }
 
-    checkCollision();
+        drawObstacle(o);
 
-    // FARHANT
+        if (checkCollision(player, o)) {
+            gameOver = true;
+            document.getElementById("restartScreen").style.display = "flex";
+        }
+    });
+
+    // FARHANTS
     farhantTimer++;
-    if (farhantTimer > 250) {
+    if (farhantTimer > 260) {
         spawnFarhant();
         farhantTimer = 0;
     }
 
-    updateFarhants();
-    drawFarhants();
-    checkFarhantCollision();
+    farhants.forEach(f => {
+        if (!f.hit) {
+            f.x -= f.speed;
+        } else {
+            f.x += f.knockback;
+            f.knockback *= 0.9;
+            if (f.knockback < 0.2) f.hit = false;
+        }
 
-    // Score
-    score += 0.2;
+        drawFarhant(f);
+
+        if (checkCollision(player, f)) {
+            f.hit = true;
+            f.knockback = 10;
+        }
+    });
+
+    // DRAW PLAYER & EFFECTS
+    drawPlayer();
+    drawLove();
+
+    // SCORE
+    score += 0.05;
     ctx.fillStyle = "white";
-    ctx.font = "20px Arial";
-    ctx.fillText("Score: " + Math.floor(score), 20, 30);
+    ctx.font = "20px sans-serif";
+    ctx.fillText("Score: " + Math.floor(score), 760, 30);
+
+    requestAnimationFrame(update);
+}
+
+update();
