@@ -113,7 +113,7 @@ const player = {
   h: 120,
   y: 0,
   vy: 0,
-  gravity: 1200,
+  gravity: 1600,
   onGround: true,
   speed: 9,
   energy: 100,
@@ -126,7 +126,7 @@ function groundY(){ return canvas.clientHeight - 110; }
 /* obstacles */
 let obstacles = [];
 let obstacleTimer = 0;
-const obstacleMin = 900, obstacleMax = 1700;
+const obstacleMin = 1000, obstacleMax = 1800;
 
 /* farhant */
 let farhants = [];
@@ -154,7 +154,7 @@ document.addEventListener('mouseup', e=>{ jumpHold = false; });
 function attemptJump(){
   if(gameOver) return;
   if(player.onGround){
-    player.vy = -700; // stronger impulse for higher jump on mobile
+    player.vy = -650; // stronger impulse for higher jump on mobile
     player.onGround = false;
     player.state = 'jump';
     spawnLoves();
@@ -479,3 +479,4 @@ function init(){
 </script>
 </body>
 </html>
+
