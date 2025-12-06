@@ -78,15 +78,15 @@ const btnSprint = document.getElementById('btnSprint');
 // ---------- asset list & preload ----------
 const ASSETS = {
   bg: 'assets/bg.jpg',
-  salmaRun: 'assets/salma_run.jpeg',
-  salmaSprint: 'assets/salma_sprint.jpeg',
-  salmaJump: 'assets/salma_jump.jpeg',
-  salmaCry: 'assets/salma_nangis.jpeg',
+  salmaRun: 'assets/salma_lari1.png',
+  salmaSprint: 'assets/salma_nangis1.png',
+  salmaJump: 'assets/salma_lari1.png',
+  salmaCry: 'assets/salma_nangis1.png',
   farhant: 'assets/farhant.jpeg',
   obs1: 'assets/obs1.png',
   obs2: 'assets/obs2.png',
-  obs3: 'assets/obs3.jpg',
-  obs4: 'assets/obs4.jpg'
+  obs3: 'assets/obs3.png',
+  obs4: 'assets/obs4.png'
 };
 const imgs = {};
 let toLoad = Object.keys(ASSETS).length, loaded = 0, failed = 0;
@@ -126,7 +126,7 @@ function groundY(){ return canvas.clientHeight - 110; }
 /* obstacles */
 let obstacles = [];
 let obstacleTimer = 0;
-const obstacleMin = 1000, obstacleMax = 1800;
+const obstacleMin = 1500, obstacleMax = 3000;
 
 /* farhant */
 let farhants = [];
@@ -479,6 +479,7 @@ function init(){
 </script>
 </body>
 </html>
+
 
 
 
